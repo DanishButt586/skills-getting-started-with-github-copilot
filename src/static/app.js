@@ -27,9 +27,14 @@ function displayActivities(activities) {
     card.className = 'activity-card';
 
     const participantsList = details.participants.length > 0
-      ? `<ul class="participants-list">
-                ${details.participants.map(email => `<li>${email}</li>`).join('')}
-               </ul>`
+      ? `<div class="participants-list">
+                ${details.participants.map(email => `
+                  <div class="participant-item">
+                    <span class="participant-email">${email}</span>
+                    <button class="delete-icon" data-activity="${name}" data-email="${email}" title="Unregister">❌</button>
+                  </div>
+                `).join('')}
+               </div>`
       : '<p class="no-participants">No participants yet</p>';
 
     card.innerHTML = `
@@ -45,6 +50,11 @@ function displayActivities(activities) {
 
     container.appendChild(card);
   }
+
+  // Add event listeners to delete buttons
+  document.querySelectorAll('.delete-icon').forEach(button => {
+    button.addEventListener('click', handleUnregister);
+  });
 }
 
 function populateActivityDropdown(activities) {
@@ -55,6 +65,35 @@ function populateActivityDropdown(activities) {
     option.value = name;
     option.textContent = name;
     select.appendChild(option);
+  }
+}
+
+async function handleUnregister(event) {
+  const button = event.target;
+  const activity = button.dataset.activity;
+  const email = button.dataset.email;
+
+  if (!confirm(`Are you sure you want to unregister ${email} from ${activity}?`)) {
+    return;
+  }
+
+  try {
+    const response = await fetch(`/activities/${encodeURIComponent(activity)}/unregister?email=${encodeURIComponent(email)}`, {
+      method: 'DELETE'
+    });
+
+    if (response.ok) {
+      const result = await response.json();
+      showMessage(result.message, 'success');
+      // Reload activities to show updated participant list
+      loadActivities();
+    } else {
+      const error = await response.json();
+      showMessage(error.detail, 'error');
+    }
+  } catch (error) {
+    console.error('Error unregistering:', error);
+    showMessage('Failed to unregister. Please try again.', 'error');
   }
 }
 
